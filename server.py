@@ -171,7 +171,7 @@ def heuristic_analysis(url):
         issues.append("Terlalu banyak tanda hubung di domain")
     
     if parsed.scheme != "https":
-        score += 20
+        score += 35
         issues.append("Tidak menggunakan HTTPS (koneksi tidak aman)")
     
     params = parse_qs(parsed.query)
