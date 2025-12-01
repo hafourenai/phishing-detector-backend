@@ -938,7 +938,7 @@ def check_link():
 @app.route("/", methods=["GET"])
 def index():
     return jsonify({
-        "message": "🔒 SUPER ENHANCED Phishing Detector & URL Safety Checker",
+        "message": "🔒  Phishing Detector & URL Safety Checker",
         "version": "3.5 (Ultimate Edition)",
         "status": "active",
         "features": [
@@ -968,7 +968,7 @@ def index():
 def health():
     return jsonify({
         "status": "ok",
-        "message": "Super Enhanced Phishing Detector running!",
+        "message": " Phishing Detector running!",
         "timestamp": datetime.now().isoformat(),
         "cache_size": len(cache),
         "api_status": {
