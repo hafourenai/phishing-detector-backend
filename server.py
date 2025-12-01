@@ -876,7 +876,7 @@ def index():
             "check": {
                 "method": "POST",
                 "path": "/check",
-                "description": "URL analysis with 99% accuracy",
+                "description": "URL analysis by hafourenai",
                 "rate_limit": "10 requests per minute"
             },
             "health": {
@@ -893,7 +893,7 @@ def index():
             "Telegram Bot API",
             "RapidAPI WHOIS"
         ],
-        "accuracy": "99% (Enterprise Grade)",
+        "accuracy": "80% (Enterprise Grade)",
         "performance": "< 5 seconds response time"
     })
 
@@ -946,7 +946,7 @@ if __name__ == "__main__":
     print("=" * 80)
     print("🚀 PHISHING DETECTOR - ENTERPRISE EDITION")
     print("=" * 80)
-    print(f"✅ Accuracy: 99%")
+    print(f"✅ Accuracy: 80%")
     print(f"🔗 API Endpoint: http://localhost:{port}")
     print(f"📊 Integrated APIs: 6+")
     print(f"⚡ Performance: Concurrent Analysis")
