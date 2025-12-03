@@ -2,8 +2,7 @@ services:
   - type: web
     name: phishing-detector-api
     env: python
-    region: indonesia      # ganti jika mau, rekomendasi: singapore
-    plan: free            # atau starter/pro
+    region: indonesia     
+    plan: free            
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn server:app
-  
