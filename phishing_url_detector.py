@@ -8,14 +8,18 @@ from app.utils.cleaner import cleanup_pycache
 logger = get_logger(__name__)
 
 
+# Automatic cleanup of __pycache__ on module import
+try:
+    cleanup_pycache()
+except Exception:
+    pass
+
+# Create the Flask application instance for Gunicorn
+app = create_app()
+
 def main():
-    """Run application."""
+    """Run application for local development."""
     try:
-        # Automatic cleanup of __pycache__
-        cleanup_pycache()
-        
-        app = create_app()
-        
         logger.info("=" * 80)
         logger.info("🚀 PHISHING DETECTOR - PRODUCTION")
         logger.info("=" * 80)
