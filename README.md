@@ -3,7 +3,7 @@
 This repository contains a machine learning project for detecting phishing websites based on URL features.
 
 ## Overview
-The model is built using a public phishing dataset from Kaggle and implemented through a Jupyter Notebook. The approach focuses on supervised learning to classify URLs as phishing or legitimate.
+The model is built using a public phishing dataset from Kaggle and implemented through a Google Collab. The approach focuses on supervised learning to classify URLs as phishing or legitimate.
 
 ## Dataset
 The dataset is obtained from Kaggle:  
