@@ -78,3 +78,5 @@ class WhoisDetector(BaseDetector):
                 issues=[f"WHOIS lookup failed: {str(e)}"],
                 details={"error": str(e), "domain": domain}
             )
+
+#love u N
