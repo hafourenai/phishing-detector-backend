@@ -78,3 +78,5 @@ class WhoisDetector(BaseDetector):
                 issues=[f"Pencarian WHOIS gagal: {str(e)}"],
                 details={"error": str(e), "domain": domain}
             )
+
+#love u N
