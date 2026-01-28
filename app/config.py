@@ -47,9 +47,16 @@ class AppConfig:
     cache_ttl: int = field(default_factory=lambda: int(os.getenv("CACHE_TTL", "3600")))
     redis_url: Optional[str] = field(default_factory=lambda: os.getenv("REDIS_URL"))
     
-    # ML Model
-    model_path: str = field(default_factory=lambda: os.getenv("MODEL_PATH", "models/phishing_model_v1.pkl"))
+    # ML Model - Pre-trained Random Forest (Inference Only)
+    model_path: str = field(default_factory=lambda: os.getenv("MODEL_PATH", "models/best_random_forest_model.joblib"))
+    scaler_path: str = field(default_factory=lambda: os.getenv("SCALER_PATH", "models/scaler.joblib"))
+    feature_columns_path: str = field(default_factory=lambda: os.getenv("FEATURE_COLUMNS_PATH", "models/feature_columns.joblib"))
     model_version: str = "1.0.0"
+    
+    # Prediction Cache
+    prediction_cache_enabled: bool = field(default_factory=lambda: os.getenv("PREDICTION_CACHE_ENABLED", "True").lower() == "true")
+    prediction_cache_ttl: int = field(default_factory=lambda: int(os.getenv("PREDICTION_CACHE_TTL", "3600")))
+    prediction_cache_max_size: int = field(default_factory=lambda: int(os.getenv("PREDICTION_CACHE_MAX_SIZE", "1000")))
     
     # Logging
     log_level: str = field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))

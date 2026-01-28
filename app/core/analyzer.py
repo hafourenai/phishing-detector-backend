@@ -21,6 +21,7 @@ from app.detectors.ipqualityscore import IPQualityScoreDetector
 from app.detectors.telegram import TelegramDetector
 from app.detectors.content import ContentDetector
 from app.detectors.heuristic_detector import HeuristicDetector
+from app.ml.prediction_cache import PredictionCache
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -34,6 +35,13 @@ class URLAnalyzer:
         self.ml_model = PhishingMLModel()
         self.validator = URLValidator()
         self.extractor = FeatureExtractor()
+        
+        # Initialize prediction cache
+        from app.config import config
+        self.cache = PredictionCache(
+            max_size=config.prediction_cache_max_size,
+            ttl=config.prediction_cache_ttl
+        ) if config.prediction_cache_enabled else None
         
         # Initialize detectors
         self.ssl_detector = SSLDetector()
@@ -181,10 +189,25 @@ class URLAnalyzer:
         return result
     
     def _analyze_ml(self, url: str) -> DetectionResult:
-        """Perform ML-based analysis."""
+        """Perform ML-based analysis with caching."""
         start_time = time.time()
         
         try:
+            # Check cache first
+            if self.cache:
+                cached_result = self.cache.get(url)
+                if cached_result is not None:
+                    logger.debug(f"Using cached ML prediction for {url[:50]}...")
+                    # Return cached result as DetectionResult
+                    return DetectionResult(
+                        name="ml_detector",
+                        score=cached_result['probability'] * 100,
+                        success=True,
+                        issues=["ML model identified suspicious patterns consistent with phishing."] if cached_result['is_phishing'] else [],
+                        details=cached_result,
+                        execution_time=time.time() - start_time
+                    )
+            
             if not self.ml_model.is_loaded():
                 return DetectionResult(
                     name="ml_detector",
@@ -197,9 +220,13 @@ class URLAnalyzer:
             features = self.extractor.extract(url)
             prediction = self.ml_model.predict(features)
             
+            # Cache the prediction result
+            if self.cache:
+                self.cache.set(url, prediction)
+            
             issues = []
             if prediction['is_phishing']:
-                issues.append("ML model identified suspicious patterns consistent with phishing.")
+                issues.append("Model ML mengidentifikasi pola mencurigakan yang konsisten dengan phishing.")
             
             return DetectionResult(
                 name="ml_detector",
@@ -233,12 +260,12 @@ class URLAnalyzer:
     def _get_recommendation(self, threat_level: ThreatLevel) -> str:
         """Get user recommendation based on threat level."""
         if threat_level == ThreatLevel.DANGER:
-            return "Do not visit this website. It is highly likely to be a phishing site."
+            return "Jangan kunjungi situs web ini. Sangat besar kemungkinan ini adalah situs phishing."
         elif threat_level == ThreatLevel.WARNING:
-            return "Be extremely cautious. This website shows suspicious characteristics."
+            return "Sangat berhati-hatilah. Situs web ini menunjukkan karakteristik yang mencurigakan."
         elif threat_level == ThreatLevel.CAUTION:
-            return "Use caution when interacting with this website."
-        return "This website appears to be safe."
+            return "Berhati-hatilah saat berinteraksi dengan situs web ini."
+        return "Situs web ini tampak aman."
 
     async def _run_in_executor(self, func, *args):
         """Run blocking function in executor."""

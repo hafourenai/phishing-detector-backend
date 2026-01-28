@@ -40,7 +40,7 @@ class HeuristicDetector(BaseDetector):
         # 1. URL/Domain Length
         if len(domain) > 50:
             score += 20
-            issues.append(f"Domain name is unusually long ({len(domain)} chars).")
+            issues.append(f"Nama domain sangat panjang ({len(domain)} karakter).")
             
         # 2. Subdomain count
         try:
@@ -48,7 +48,7 @@ class HeuristicDetector(BaseDetector):
             subdomain_count = len(ext.subdomain.split('.')) if ext.subdomain else 0
             if subdomain_count >= 3:
                 score += 15
-                issues.append(f"Excessive number of subdomains ({subdomain_count}).")
+                issues.append(f"Jumlah subdomain berlebihan ({subdomain_count}).")
         except:
             subdomain_count = 0
             
@@ -56,12 +56,12 @@ class HeuristicDetector(BaseDetector):
         special_chars = sum(1 for c in domain if not c.isalnum() and c not in '.-')
         if special_chars >= 3:
             score += 10
-            issues.append("High number of special characters in domain.")
+            issues.append("Banyak karakter khusus dalam domain.")
             
         # 4. Suspicious TLD
         if any(domain.endswith(tld) for tld in SUSPICIOUS_TLDS):
             score += 25
-            issues.append(f"Suspicious TLD detected: {ext.suffix if 'ext' in locals() else 'unknown'}")
+            issues.append(f"TLD mencurigakan terdeteksi: {ext.suffix if 'ext' in locals() else 'unknown'}")
             
         # 5. Keywords in domain
         for risk, keywords in PHISHING_KEYWORDS.items():
@@ -69,7 +69,7 @@ class HeuristicDetector(BaseDetector):
             for kw in keywords:
                 if kw in domain:
                     score += weight
-                    issues.append(f"Suspicious keyword '{kw}' found in domain.")
+                    issues.append(f"Kata kunci mencurigakan '{kw}' ditemukan dalam domain.")
                     break
                     
         # 6. Typosquatting
@@ -77,7 +77,7 @@ class HeuristicDetector(BaseDetector):
             if target in domain and domain != f"{target}.com" and domain != f"www.{target}.com":
                 if len(domain) - len(target) <= 5:
                     score += 30
-                    issues.append(f"Possible typosquatting targeting {target}.")
+                    issues.append(f"Kemungkinan typosquatting menargetkan {target}.")
                     break
                     
         # 7. IP Address usage
@@ -86,14 +86,14 @@ class HeuristicDetector(BaseDetector):
             ip_part = domain.split(':')[0]
             ipaddress.ip_address(ip_part)
             score += 40
-            issues.append("URL uses numeric IP address instead of domain name.")
+            issues.append("URL menggunakan alamat IP numerik alih-alih nama domain.")
         except:
             pass
             
         # 8. Shorteners
         if any(s in domain for s in SHORTENERS):
             score += 20
-            issues.append("URL shortener service used (may obscure destination).")
+            issues.append("Layanan pemendek URL digunakan (mungkin menyembunyikan tujuan).")
             
         # 9. Sensitive parameters
         params = parse_qs(parsed.query)
@@ -101,13 +101,13 @@ class HeuristicDetector(BaseDetector):
         found_params = [p for p in sensitive if p in params]
         if found_params:
             score += 25
-            issues.append(f"Sensitive parameters found in URL: {', '.join(found_params)}")
+            issues.append(f"Parameter sensitif ditemukan dalam URL: {', '.join(found_params)}")
             
         # 10. Known Phishing Database
         for d in KNOWN_PHISHING_DOMAINS:
             if d in domain:
                 score += 50
-                issues.append("Domain matches known phishing patterns.")
+                issues.append("Domain sesuai dengan pola phishing yang diketahui.")
                 break
                 
         return self._create_result(

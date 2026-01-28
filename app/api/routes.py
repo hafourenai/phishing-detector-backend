@@ -100,9 +100,19 @@ def check_url():
 @api_bp.route('/info', methods=['GET'])
 def api_info():
     """Get API information."""
+    # Get model info
+    from app.ml.model_manager import ModelManager
+    manager = ModelManager()
+    model_info = manager.get_info()
+    
     return jsonify({
         'name': 'Phishing Detector API',
         'version': config.model_version,
+        'ml_model': {
+            'loaded': model_info['loaded'],
+            'type': model_info['model_type'],
+            'features': model_info['num_features']
+        },
         'endpoints': {
             'health': {
                 'method': 'GET',
@@ -119,6 +129,29 @@ def api_info():
                 'method': 'GET',
                 'path': '/info',
                 'description': 'API information'
+            },
+            'cache_stats': {
+                'method': 'GET',
+                'path': '/cache/stats',
+                'description': 'Prediction cache statistics'
             }
         }
     })
+
+
+@api_bp.route('/cache/stats', methods=['GET'])
+def cache_stats():
+    """Get cache statistics."""
+    try:
+        from app.ml.prediction_cache import PredictionCache
+        cache = PredictionCache()
+        stats = cache.stats()
+        
+        return jsonify({
+            'cache_enabled': config.prediction_cache_enabled,
+            'statistics': stats
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Failed to get cache stats: {str(e)}")
+        return jsonify({'error': 'Failed to retrieve cache statistics'}), 500

@@ -52,7 +52,7 @@ class VirusTotalDetector(BaseDetector):
                 score = (malicious / max(total_engines, 1)) * 100
                 issues = []
                 if malicious > 0:
-                    issues.append(f"VirusTotal: {malicious} engines detected this URL as malicious.")
+                    issues.append(f"VirusTotal: {malicious} mesin mendeteksi URL ini sebagai berbahaya.")
                 
                 return self._create_result(
                     score=score,
@@ -66,13 +66,13 @@ class VirusTotalDetector(BaseDetector):
                 return self._create_result(
                     score=0.0,
                     issues=[],
-                    details={"status": "URL not found in VirusTotal database"}
+                    details={"status": "URL tidak ditemukan dalam database VirusTotal"}
                 )
             else:
                 return self._create_result(
                     score=0.0,
                     success=False,
-                    issues=[f"VirusTotal API returned status {response.status_code}"]
+                    issues=[f"API VirusTotal mengembalikan status {response.status_code}"]
                 )
                 
         except Exception as e:
@@ -80,5 +80,5 @@ class VirusTotalDetector(BaseDetector):
             return self._create_result(
                 score=0.0,
                 success=False,
-                issues=[f"VirusTotal API error: {str(e)}"]
+                issues=[f"Kesalahan API VirusTotal: {str(e)}"]
             )

@@ -73,7 +73,7 @@ class ContentDetector(BaseDetector):
                     features['has_hidden_elements'] = True
                     score += 30
                     if "Ditemukan hidden iframe (teknik phishing umum)" not in issues:
-                        issues.append("Hidden iframe detected (common phishing technique).")
+                        issues.append("Hidden iframe terdeteksi (teknik phishing umum).")
             
             # Script Analysis
             scripts = soup.find_all('script', src=True)
@@ -83,7 +83,7 @@ class ContentDetector(BaseDetector):
                 if 'telegram' in src or 't.me' in src:
                     score += 15
                     if "Script mengandung referensi Telegram yang mencurigakan" not in issues:
-                        issues.append("Suspicious Telegram script references found.")
+                        issues.append("Referensi script Telegram yang mencurigakan ditemukan.")
             
             # Keyword Analysis
             text_content = soup.get_text().lower()
@@ -95,11 +95,11 @@ class ContentDetector(BaseDetector):
             
             if found_keywords:
                 score += len(set(found_keywords)) * 2
-                issues.append(f"Phishing keywords found: {', '.join(list(set(found_keywords))[:5])}")
+                issues.append(f"Kata kunci phishing ditemukan: {', '.join(list(set(found_keywords))[:5])}")
             
             if features['redirect_count'] > 2:
                 score += 10
-                issues.append(f"Excessive redirects detected ({features['redirect_count']}).")
+                issues.append(f"Terdeteksi pengalihan berlebihan ({features['redirect_count']}).")
                 
             return self._create_result(
                 score=min(score, 100.0),
@@ -111,5 +111,5 @@ class ContentDetector(BaseDetector):
             return self._create_result(
                 score=0.0,
                 success=False,
-                issues=["Could not analyze page content."]
+                issues=["Tidak dapat menganalisis konten halaman."]
             )

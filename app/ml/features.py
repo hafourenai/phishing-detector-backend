@@ -1,102 +1,229 @@
-"""Feature extraction for ML model."""
+"""
+Feature extraction for ML model - 48 Features.
+
+Matches training feature order from feature_columns.joblib
+"""
 import re
 import tldextract
 import ipaddress
 from urllib.parse import urlparse, parse_qs
 from typing import Dict, Any
-
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
 class FeatureExtractor:
-    """Extract features from URL for ML model."""
+    """Extract 48 features from URL for ML model (trained offline)."""
+    
+    # Sensitive words commonly used in phishing
+    SENSITIVE_WORDS = [
+        'login', 'signin', 'account', 'update', 'confirm', 'verify',
+        'secure', 'banking', 'password', 'paypal', 'ebay', 'amazon'
+    ]
+    
+    # Brand names often spoofed
+    BRAND_NAMES = [
+        'paypal', 'amazon', 'ebay', 'apple', 'microsoft', 'google',
+        'facebook', 'instagram', 'netflix', 'bank', 'wells', 'chase'
+    ]
     
     @staticmethod
     def extract(url: str) -> Dict[str, Any]:
         """
-        Extract all features from URL according to UCI dataset format (30 features).
-        Values are typically 1 (legitimate), 0 (suspicious), -1 (phishing).
+        Extract all 48 features from URL.
+        
+        Note: Some features require HTML content analysis which is not done
+        for performance reasons. These features use safe default values.
+        
+        Returns:
+            Dictionary with 48 features in exact training order
         """
         parsed = urlparse(url)
         domain = parsed.netloc
         path = parsed.path
+        query = parsed.query
         
         try:
-            extracted = tldextract.extract(domain)
-        except:
+            extracted = tldextract.extract(url)
+        except Exception:
             extracted = None
-
-        # Helper to check if IP
-        is_ip = 1 if FeatureExtractor._has_ip(domain) else -1
         
-        # URL Length
-        url_len = len(url)
-        url_feature = 1 if url_len < 54 else (0 if 54 <= url_len <= 75 else -1)
+        # Feature extraction
+        features = {}
         
-        # Short URL (TinyURL etc)
-        short_services = r"bit\.ly|goo\.gl|shorte\.st|go2l\.ink|x\.co|ow\.ly|t\.co|tinyurl|tr\.im|is\.gd|cli\.gs|" \
-                        r"yfrog\.com|migre\.me|ff\.im|tiny\.cc|url4\.eu|twit\.ac|su\.pr|twurl\.nl|snipurl\.com|" \
-                        r"short\.to|BudURL\.com|ping\.fm|post\.ly|Just\.as|bkite\.com|snip\.li|fig\.sh|loopt\.us|" \
-                        r"doiop\.com|short\.ie|kl\.am|wp\.me|rubyurl\.com|om\.ly|to\.ly|bit\.do|t\.co|lnkd\.in|db\.tt|" \
-                        r"qr\.ae|adf\.ly|goo\.gl|bitly\.com|cur\.lv|tinyurl\.com|ow\.ly|bit\.ly|ity\.im|q\.gs|is\.gd|" \
-                        r"po\.st|bc\.vc|twitthis\.com|u\.to|j\.mp|buzurl\.com|cutt\.us|u\.bb|yourls\.org|x\.co|" \
-                        r"prettylinkpro\.com|scrnch\.me|filoops\.info|vzturl\.com|qr\.net|1url\.com|tweez\.me|v\.gd|" \
-                        r"tr\.im|link\.zip\.net"
-        is_short = -1 if re.search(short_services, url) else 1
-
-        # Features
-        features = {
-            'UsingIP': is_ip,
-            'LongURL': url_feature,
-            'ShortURL': is_short,
-            'Symbol@': -1 if "@" in url else 1,
-            'Redirecting//': -1 if url.rfind("//") > 7 else 1,
-            'PrefixSuffix-': -1 if "-" in domain else 1,
-            'SubDomains': FeatureExtractor._subdomain_feature(extracted),
-            'HTTPS': 1 if url.startswith('https') else -1,
-            'DomainRegLen': 1,  # Default safe
-            'Favicon': 1,       # Default safe
-            'NonStdPort': -1 if parsed.port and parsed.port not in [80, 443] else 1,
-            'HTTPSDomainURL': -1 if "https" in domain else 1,
-            'RequestURL': 1,    # Placeholder
-            'AnchorURL': 1,     # Placeholder
-            'LinksInScriptTags': 1, # Placeholder
-            'ServerFormHandler': 1, # Placeholder
-            'InfoEmail': -1 if "mailto:" in url or "mail()" in url else 1,
-            'AbnormalURL': 1 if domain in url else -1,
-            'WebsiteForwarding': -1 if url.count("//") > 1 else 1,
-            'StatusBarCust': 1,   # Default safe
-            'DisableRightClick': 1, # Default safe
-            'UsingPopupWindow': 1,  # Default safe
-            'IframeRedirection': 1, # Default safe
-            'AgeofDomain': 1,      # Default safe
-            'DNSRecording': 1,     # Default safe
-            'WebsiteTraffic': 0,   # Default suspicious/neutral
-            'PageRank': 0,         # Default neutral
-            'GoogleIndex': 1,      # Default safe
-            'LinksPointingToPage': 0, # Default neutral
-            'StatsReport': 1       # Default safe
-        }
+        # 1. NumDots - Number of dots in URL
+        features['NumDots'] = url.count('.')
+        
+        # 2. SubdomainLevel - Number of subdomains
+        if extracted:
+            subdomain = extracted.subdomain
+            features['SubdomainLevel'] = subdomain.count('.') + 1 if subdomain else 0
+        else:
+            features['SubdomainLevel'] = 0
+        
+        # 3. PathLevel - Number of path components
+        path_parts = [p for p in path.split('/') if p]
+        features['PathLevel'] = len(path_parts)
+        
+        # 4. UrlLength - Total URL length
+        features['UrlLength'] = len(url)
+        
+        # 5. NumDash - Number of dashes in URL
+        features['NumDash'] = url.count('-')
+        
+        # 6. NumDashInHostname - Number of dashes in hostname
+        features['NumDashInHostname'] = domain.count('-')
+        
+        # 7. AtSymbol - Has @ symbol (suspicious)
+        features['AtSymbol'] = 1 if '@' in url else 0
+        
+        # 8. TildeSymbol - Has ~ symbol
+        features['TildeSymbol'] = 1 if '~' in url else 0
+        
+        # 9. NumUnderscore - Number of underscores
+        features['NumUnderscore'] = url.count('_')
+        
+        # 10. NumPercent - Number of % symbols
+        features['NumPercent'] = url.count('%')
+        
+        # 11. NumQueryComponents - Number of query parameters
+        query_params = parse_qs(query)
+        features['NumQueryComponents'] = len(query_params)
+        
+        # 12. NumAmpersand - Number of & symbols
+        features['NumAmpersand'] = url.count('&')
+        
+        # 13. NumHash - Number of # symbols
+        features['NumHash'] = url.count('#')
+        
+        # 14. NumNumericChars - Number of digits in URL
+        features['NumNumericChars'] = sum(c.isdigit() for c in url)
+        
+        # 15. NoHttps - Not using HTTPS (1 = no HTTPS)
+        features['NoHttps'] = 0 if url.startswith('https') else 1
+        
+        # 16. RandomString - Has random-looking string (heuristic)
+        # Check for long alphanumeric strings
+        random_pattern = r'[a-zA-Z0-9]{20,}'
+        features['RandomString'] = 1 if re.search(random_pattern, url) else 0
+        
+        # 17. IpAddress - Using IP address instead of domain
+        features['IpAddress'] = 1 if FeatureExtractor._is_ip(domain) else 0
+        
+        # 18. DomainInSubdomains - Domain name appears in subdomain
+        if extracted and extracted.domain:
+            features['DomainInSubdomains'] = 1 if extracted.domain in (extracted.subdomain or '') else 0
+        else:
+            features['DomainInSubdomains'] = 0
+        
+        # 19. DomainInPaths - Domain name appears in path
+        if extracted and extracted.domain:
+            features['DomainInPaths'] = 1 if extracted.domain in path else 0
+        else:
+            features['DomainInPaths'] = 0
+        
+        # 20. HttpsInHostname - "https" appears in hostname (suspicious)
+        features['HttpsInHostname'] = 1 if 'https' in domain.lower() else 0
+        
+        # 21. HostnameLength - Length of hostname
+        features['HostnameLength'] = len(domain)
+        
+        # 22. PathLength - Length of path
+        features['PathLength'] = len(path)
+        
+        # 23. QueryLength - Length of query string
+        features['QueryLength'] = len(query)
+        
+        # 24. DoubleSlashInPath - Has // in path (not protocol)
+        features['DoubleSlashInPath'] = 1 if '//' in path else 0
+        
+        # 25. NumSensitiveWords - Count of sensitive keywords
+        url_lower = url.lower()
+        features['NumSensitiveWords'] = sum(1 for word in FeatureExtractor.SENSITIVE_WORDS if word in url_lower)
+        
+        # 26. EmbeddedBrandName - Contains brand name (potential spoofing)
+        features['EmbeddedBrandName'] = 1 if any(brand in url_lower for brand in FeatureExtractor.BRAND_NAMES) else 0
+        
+        # === HTML-based features (require page content - using safe defaults for URL-only analysis) ===
+        # For production with actual HTML scraping, these would be extracted from page content
+        
+        # 27. PctExtHyperlinks - % of external hyperlinks (default: 0 = safe)
+        features['PctExtHyperlinks'] = 0.0
+        
+        # 28. PctExtResourceUrls - % of external resources (default: 0 = safe)
+        features['PctExtResourceUrls'] = 0.0
+        
+        # 29. ExtFavicon - External favicon (default: 0 = safe)
+        features['ExtFavicon'] = 0
+        
+        # 30. InsecureForms - Has insecure forms (default: 0 = safe)
+        features['InsecureForms'] = 0
+        
+        # 31. RelativeFormAction - Has relative form action (default: 0 = safe)
+        features['RelativeFormAction'] = 0
+        
+        # 32. ExtFormAction - Has external form action (default: 0 = safe)
+        features['ExtFormAction'] = 0
+        
+        # 33. AbnormalFormAction - Has abnormal form action (default: 0 = safe)
+        features['AbnormalFormAction'] = 0
+        
+        # 34. PctNullSelfRedirectHyperlinks - % of null/self-redirect links (default: 0 = safe)
+        features['PctNullSelfRedirectHyperlinks'] = 0.0
+        
+        # 35. FrequentDomainNameMismatch - Frequent domain mismatches (default: 0 = safe)
+        features['FrequentDomainNameMismatch'] = 0
+        
+        # 36. FakeLinkInStatusBar - Fake links in status bar (default: 0 = safe)
+        features['FakeLinkInStatusBar'] = 0
+        
+        # 37. RightClickDisabled - Right click disabled (default: 0 = safe)
+        features['RightClickDisabled'] = 0
+        
+        # 38. PopUpWindow - Has pop-up windows (default: 0 = safe)
+        features['PopUpWindow'] = 0
+        
+        # 39. SubmitInfoToEmail - Submits to email (default: 0 = safe)
+        features['SubmitInfoToEmail'] = 0
+        
+        # 40. IframeOrFrame - Contains iframe/frame (default: 0 = safe)
+        features['IframeOrFrame'] = 0
+        
+        # 41. MissingTitle - Missing page title (default: 0 = safe)
+        features['MissingTitle'] = 0
+        
+        # 42. ImagesOnlyInForm - Images only in forms (default: 0 = safe)
+        features['ImagesOnlyInForm'] = 0
+        
+        # 43. SubdomainLevelRT - Subdomain level (risk threshold) - same as SubdomainLevel
+        features['SubdomainLevelRT'] = features['SubdomainLevel']
+        
+        # 44. UrlLengthRT - URL length (risk threshold)
+        # 1 if very long (> 75 chars), 0 otherwise
+        features['UrlLengthRT'] = 1 if features['UrlLength'] > 75 else 0
+        
+        # 45. PctExtResourceUrlsRT - Same as PctExtResourceUrls
+        features['PctExtResourceUrlsRT'] = features['PctExtResourceUrls']
+        
+        # 46. AbnormalExtFormActionR - Same as AbnormalFormAction
+        features['AbnormalExtFormActionR'] = features['AbnormalFormAction']
+        
+        # 47. ExtMetaScriptLinkRT - External meta/script/link tags (default: 0 = safe)
+        features['ExtMetaScriptLinkRT'] = 0
+        
+        # 48. PctExtNullSelfRedirectHyperlinksRT - Same as PctNullSelfRedirectHyperlinks
+        features['PctExtNullSelfRedirectHyperlinksRT'] = features['PctNullSelfRedirectHyperlinks']
         
         return features
-
+    
     @staticmethod
-    def _has_ip(domain: str) -> bool:
+    def _is_ip(domain: str) -> bool:
         """Check if domain is an IP address."""
         try:
+            # Remove port if present
             ip_part = domain.split(':')[0]
             ipaddress.ip_address(ip_part)
             return True
-        except:
+        except ValueError:
             return False
-
-    @staticmethod
-    def _subdomain_feature(extracted) -> int:
-        if not extracted: return -1
-        s = extracted.subdomain
-        if not s: return 1
-        dots = s.count('.')
-        if dots == 0: return 0 # suspicious
-        return -1 # phishing (2+ subdomains)

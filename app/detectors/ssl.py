@@ -30,7 +30,7 @@ class SSLDetector(BaseDetector):
             return self._create_result(
                 score=100.0,
                 success=True,
-                issues=["Website is not using HTTPS."],
+                issues=["Situs web tidak menggunakan HTTPS."],
                 details={"has_ssl": False}
             )
             
@@ -44,7 +44,7 @@ class SSLDetector(BaseDetector):
                 return self._create_result(
                     score=80.0,
                     success=True,
-                    issues=["Could not retrieve SSL certificate."],
+                    issues=["Tidak dapat mengambil sertifikat SSL."],
                     details={"has_ssl": False}
                 )
                 
@@ -58,13 +58,13 @@ class SSLDetector(BaseDetector):
             score = 0.0
             
             if days_remaining < 0:
-                issues.append("SSL certificate has expired.")
+                issues.append("Sertifikat SSL telah kedaluwarsa.")
                 score = 100.0
             elif days_remaining < 7:
-                issues.append(f"SSL certificate expires in {days_remaining} days.")
+                issues.append(f"Sertifikat SSL kedaluwarsa dalam {days_remaining} hari.")
                 score = 80.0
             elif days_remaining < 30:
-                issues.append(f"SSL certificate expires soon ({days_remaining} days).")
+                issues.append(f"Sertifikat SSL akan segera kedaluwarsa ({days_remaining} hari).")
                 score = 40.0
             
             return self._create_result(
@@ -84,6 +84,6 @@ class SSLDetector(BaseDetector):
             return self._create_result(
                 score=50.0,
                 success=False,
-                issues=[f"SSL certificate error: {str(e)}"],
+                issues=[f"Kesalahan sertifikat SSL: {str(e)}"],
                 details={"error": str(e), "has_ssl": False}
             )

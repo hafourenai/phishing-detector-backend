@@ -21,7 +21,7 @@ def main():
     """Run application for local development."""
     try:
         logger.info("=" * 80)
-        logger.info("🚀 PHISHING DETECTOR - PRODUCTION")
+        logger.info(" PHISHING DETECTOR - PRODUCTION")
         logger.info("=" * 80)
         logger.info(f"Environment: {config.env}")
         logger.info(f"Host: {config.host}:{config.port}")

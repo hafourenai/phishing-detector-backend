@@ -24,7 +24,7 @@ class IPQualityScoreDetector(BaseDetector):
             return self._create_result(
                 score=0.0,
                 success=False,
-                issues=["IPQualityScore API key not configured"]
+                issues=["Kunci API IPQualityScore tidak dikonfigurasi"]
             )
             
         try:
@@ -39,11 +39,11 @@ class IPQualityScoreDetector(BaseDetector):
                 
                 issues = []
                 if data.get('phishing'):
-                    issues.append("IPQualityScore: Identified as phishing.")
+                    issues.append("IPQualityScore: Diidentifikasi sebagai phishing.")
                 if data.get('malware'):
-                    issues.append("IPQualityScore: Identified as malware.")
+                    issues.append("IPQualityScore: Diidentifikasi sebagai malware.")
                 if data.get('suspicious'):
-                    issues.append("IPQualityScore: Identified as suspicious.")
+                    issues.append("IPQualityScore: Diidentifikasi sebagai mencurigakan.")
                 
                 return self._create_result(
                     score=float(risk_score), # Assuming it's already 0-100 based on server.py usage
@@ -54,7 +54,7 @@ class IPQualityScoreDetector(BaseDetector):
                 return self._create_result(
                     score=0.0,
                     success=False,
-                    issues=[f"IPQualityScore API returned status {response.status_code}"]
+                    issues=[f"API IPQualityScore mengembalikan status {response.status_code}"]
                 )
                 
         except Exception as e:
@@ -62,5 +62,5 @@ class IPQualityScoreDetector(BaseDetector):
             return self._create_result(
                 score=0.0,
                 success=False,
-                issues=[f"IPQualityScore API error: {str(e)}"]
+                issues=[f"Kesalahan API IPQualityScore: {str(e)}"]
             )

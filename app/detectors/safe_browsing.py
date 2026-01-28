@@ -62,14 +62,14 @@ class SafeBrowsingDetector(BaseDetector):
                 threat_types = ', '.join([t['type'] for t in threats])
                 return self._create_result(
                     score=100.0,
-                    issues=[f"Google Safe Browsing: Dangerous threat detected ({threat_types})"],
+                    issues=[f"Google Safe Browsing: Ancaman berbahaya terdeteksi ({threat_types})"],
                     details={"threats": threats}
                 )
             
             return self._create_result(
                 score=0.0,
                 issues=[],
-                details={"status": "No threats found"}
+                details={"status": "Tidak ditemukan ancaman"}
             )
             
         except Exception as e:
@@ -77,5 +77,5 @@ class SafeBrowsingDetector(BaseDetector):
             return self._create_result(
                 score=0.0,
                 success=False,
-                issues=[f"Safe Browsing API error: {str(e)}"]
+                issues=[f"Kesalahan API Safe Browsing: {str(e)}"]
             )
