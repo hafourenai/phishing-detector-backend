@@ -2,6 +2,7 @@
 import joblib
 import threading
 import numpy as np
+import pandas as pd
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from app.utils.logger import get_logger
@@ -100,15 +101,15 @@ class ModelManager:
             logger.error(f"❌ Failed to load ML artifacts: {str(e)}", exc_info=True)
             self._model_loaded = False
     
-    def align_features(self, features_dict: Dict[str, Any]) -> np.ndarray:
+    def align_features(self, features_dict: Dict[str, Any]) -> pd.DataFrame:
         """
-        Align features to training order and convert to numpy array.
+        Align features to training order and convert to pandas DataFrame.
         
         Args:
             features_dict: Dictionary of extracted features
             
         Returns:
-            Numpy array with features in correct order
+            DataFrame with features in correct order and column names
             
         Raises:
             ValueError: If feature columns not loaded or features missing
@@ -130,17 +131,18 @@ class ModelManager:
         if missing_features:
             logger.warning(f"Missing features (using default 0): {missing_features}")
         
-        return np.array(feature_values).reshape(1, -1)
+        # Return as DataFrame with column names to avoid sklearn warnings
+        return pd.DataFrame([feature_values], columns=self.feature_columns)
     
-    def scale_features(self, features_array: np.ndarray) -> np.ndarray:
+    def scale_features(self, features_df: pd.DataFrame) -> pd.DataFrame:
         """
         Apply scaling to features.
         
         Args:
-            features_array: Raw feature array
+            features_df: Raw feature DataFrame
             
         Returns:
-            Scaled feature array
+            Scaled feature DataFrame
             
         Raises:
             ValueError: If scaler not loaded
@@ -148,7 +150,9 @@ class ModelManager:
         if self.scaler is None:
             raise ValueError("Scaler not loaded")
         
-        return self.scaler.transform(features_array)
+        # Transform returns array, wrap back in DataFrame to preserve column names
+        scaled_array = self.scaler.transform(features_df)
+        return pd.DataFrame(scaled_array, columns=features_df.columns)
     
     def predict(self, features_dict: Dict[str, Any]) -> Dict[str, Any]:
         """

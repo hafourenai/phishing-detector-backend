@@ -1,7 +1,7 @@
 """Domain age detector using WHOIS."""
 import whois
-from datetime import datetime
-from typing import List, Union
+from datetime import datetime, timezone
+from typing import List, Union, Optional
 from urllib.parse import urlparse
 
 from app.detectors.base import BaseDetector
@@ -9,6 +9,36 @@ from app.models import DetectionResult
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _normalize_datetime(dt) -> Optional[datetime]:
+    """
+    Normalize a datetime value to timezone-aware UTC.
+    
+    Handles:
+    - Lists (extracts first valid element)
+    - Timezone-naive datetimes (attaches UTC)
+    - Timezone-aware datetimes (converts to UTC)
+    - None/invalid values (returns None)
+    """
+    # Handle list - extract first valid datetime
+    if isinstance(dt, list):
+        for item in dt:
+            normalized = _normalize_datetime(item)
+            if normalized is not None:
+                return normalized
+        return None
+    
+    # Handle non-datetime values
+    if not isinstance(dt, datetime):
+        return None
+    
+    # Handle timezone-naive datetime - attach UTC
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    
+    # Handle timezone-aware datetime - convert to UTC
+    return dt.astimezone(timezone.utc)
 
 
 class WhoisDetector(BaseDetector):
@@ -29,9 +59,8 @@ class WhoisDetector(BaseDetector):
             # or wrap it if performance is a major concern
             w = whois.whois(domain)
             
-            creation_date = w.creation_date
-            if isinstance(creation_date, list):
-                creation_date = creation_date[0]
+            # Normalize creation_date to timezone-aware UTC
+            creation_date = _normalize_datetime(w.creation_date)
             
             if not creation_date:
                 return self._create_result(
@@ -40,8 +69,9 @@ class WhoisDetector(BaseDetector):
                     issues=["Tidak dapat menentukan tanggal pembuatan domain."],
                     details={"domain": domain}
                 )
-                
-            age_days = (datetime.now() - creation_date).days
+            
+            # Use timezone-aware now() for safe arithmetic
+            age_days = (datetime.now(timezone.utc) - creation_date).days
             age_years = age_days / 365.25
             
             issues = []
