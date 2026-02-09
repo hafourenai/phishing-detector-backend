@@ -1,29 +1,28 @@
 FROM python:3.11-slim
 
-# Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# System deps (ML safe)
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
 COPY requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application
 COPY . .
 
-# Create non-root user
+# Non-root user (good practice)
 RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
 
-# Expose port
-EXPOSE 5000
+# HF Spaces WAJIB port 7860
+EXPOSE 7860
 
-# Run application
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "phishing_url_detector:main"]
+# FastAPI + Gunicorn (ASGI)
+CMD ["gunicorn", "phishing_url_detector:app", \
+     "-k", "uvicorn.workers.UvicornWorker", \
+     "--bind", "0.0.0.0:7860", \
+     "--workers", "1", \
+     "--timeout", "120"]
