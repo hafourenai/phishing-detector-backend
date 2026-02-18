@@ -1,8 +1,0 @@
-services:
-  - type: web
-    name: phishing-detector-api
-    env: python
-    region: indonesia     
-    plan: free            
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn server:app
