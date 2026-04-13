@@ -58,6 +58,10 @@ class AppConfig:
     prediction_cache_ttl: int = field(default_factory=lambda: int(os.getenv("PREDICTION_CACHE_TTL", "3600")))
     prediction_cache_max_size: int = field(default_factory=lambda: int(os.getenv("PREDICTION_CACHE_MAX_SIZE", "1000")))
     
+    # Visual Analysis (Playwright) - only runs when deep_scan=True in request
+    visual_analysis_enabled: bool = field(default_factory=lambda: os.getenv("VISUAL_ANALYSIS_ENABLED", "True").lower() == "true")
+    visual_analysis_timeout: int = field(default_factory=lambda: int(os.getenv("VISUAL_ANALYSIS_TIMEOUT", "10")))
+
     # Logging
     log_level: str = field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))
     log_file: Optional[str] = field(default_factory=lambda: os.getenv("LOG_FILE"))

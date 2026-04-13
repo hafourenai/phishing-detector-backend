@@ -50,7 +50,6 @@ class SSLDetector(BaseDetector):
                 
             # Parse dates
             not_after_str = cert.get('notAfter')
-            # Example format: 'Oct 31 23:59:59 2023 GMT'
             expiry_date = datetime.strptime(not_after_str, '%b %d %H:%M:%S %Y %Z')
             days_remaining = (expiry_date - datetime.utcnow()).days
             

@@ -21,6 +21,7 @@ from app.detectors.ipqualityscore import IPQualityScoreDetector
 from app.detectors.telegram import TelegramDetector
 from app.detectors.content import ContentDetector
 from app.detectors.heuristic_detector import HeuristicDetector
+from app.detectors.visual import VisualDetector
 from app.ml.prediction_cache import PredictionCache
 from app.utils.logger import get_logger
 
@@ -52,101 +53,117 @@ class URLAnalyzer:
         self.telegram = TelegramDetector()
         self.content = ContentDetector()
         self.heuristic = HeuristicDetector()
+        self.visual = VisualDetector()
     
-    async def analyze(self, url: str, force_refresh: bool = False) -> URLAnalysisResult:
+    async def analyze(
+        self,
+        url: str,
+        force_refresh: bool = False,
+        deep_scan: bool = False,
+    ) -> URLAnalysisResult:
         """
         Perform complete URL analysis.
-        
+
         Args:
             url: URL to analyze
             force_refresh: Whether to bypass cache
-            
+            deep_scan: Activate VisualDetector (headless browser). Slower but
+                       catches JS-rendered phishing, brand impersonation, etc.
+
         Returns:
             URLAnalysisResult
         """
         start_time = time.time()
-        
+
         # 1. Process and validate URL
         sanitized_url = self.validator.process(url)
         parsed = urlparse(sanitized_url)
         hostname = parsed.netloc
-        
+
         # 2. Parallel Detection
-        # Use asyncio.gather for better performance
         import asyncio
-        
-        ml_task = self._run_in_executor(self._analyze_ml, sanitized_url)
-        ssl_task = self.ssl_detector.safe_detect(sanitized_url)
+
+        ml_task   = self._run_in_executor(self._analyze_ml, sanitized_url)
+        ssl_task  = self.ssl_detector.safe_detect(sanitized_url)
         whois_task = self.whois_detector.safe_detect(sanitized_url)
-        sb_task = self.safe_browsing.safe_detect(sanitized_url)
-        vt_task = self.virustotal.safe_detect(sanitized_url)
-        ipq_task = self.ipqualityscore.safe_detect(sanitized_url)
-        tg_task = self.telegram.safe_detect(sanitized_url)
-        cnt_task = self.content.safe_detect(sanitized_url)
-        heu_task = self.heuristic.safe_detect(sanitized_url)
-        
-        # Gather all results
-        (
-            ml_res, ssl_res, whois_res, sb_res, 
-            vt_res, ipq_res, tg_res, cnt_res, heu_res
-        ) = await asyncio.gather(
+        sb_task   = self.safe_browsing.safe_detect(sanitized_url)
+        vt_task   = self.virustotal.safe_detect(sanitized_url)
+        ipq_task  = self.ipqualityscore.safe_detect(sanitized_url)
+        tg_task   = self.telegram.safe_detect(sanitized_url)
+        cnt_task  = self.content.safe_detect(sanitized_url)
+        heu_task  = self.heuristic.safe_detect(sanitized_url)
+
+        tasks = [
             ml_task, ssl_task, whois_task, sb_task,
-            vt_task, ipq_task, tg_task, cnt_task, heu_task
+            vt_task, ipq_task, tg_task, cnt_task, heu_task,
+        ]
+
+        # Visual detector only runs when caller explicitly requests deep_scan
+        if deep_scan:
+            logger.info(f"Deep scan enabled — starting VisualDetector for {sanitized_url[:60]}")
+            visual_task = self.visual.safe_detect(sanitized_url)
+            tasks.append(visual_task)
+
+        results = await asyncio.gather(*tasks)
+
+        # Unpack results
+        ml_res, ssl_res, whois_res, sb_res, vt_res, ipq_res, tg_res, cnt_res, heu_res = results[:9]
+        visual_res = results[9] if deep_scan else DetectionResult(
+            name="visual", score=0.0, success=False,
+            issues=[], details={"skipped": True, "reason": "deep_scan not requested"}
         )
-        
+
         detections = [
-            ml_res, ssl_res, whois_res, sb_res, 
-            vt_res, ipq_res, tg_res, cnt_res, heu_res
+            ml_res, ssl_res, whois_res, sb_res,
+            vt_res, ipq_res, tg_res, cnt_res, heu_res, visual_res,
         ]
         
-        # 3. Calculate final score with weighted adjustments (Ported from server.py)
-        weights = {
-            'heuristic': 0.25,
-            'safe_browsing': 0.20,
-            'virustotal': 0.15,
-            'ipqualityscore': 0.15,
-            'ml_detector': 0.10, # Replaced rapidapi_phishing with ML for weight
-            'content': 0.10,
-            'ssl': 0.05
-        }
+        # 3. Calculate final score with weighted adjustments
+        #
+        # When deep_scan=True, visual gets 15% carved from the other detectors.
+        # When deep_scan=False (default), visual is excluded and the original
+        # weights are used so the score is always calibrated to 100%.
+        if deep_scan and visual_res.success:
+            weights = {
+                'heuristic':      0.20,
+                'safe_browsing':  0.17,
+                'virustotal':     0.13,
+                'ipqualityscore': 0.12,
+                'visual':         0.15,   # ← new
+                'ml_detector':    0.10,
+                'content':        0.08,
+                'ssl':            0.05,
+            }
+        else:
+            weights = {
+                'heuristic':      0.25,
+                'safe_browsing':  0.20,
+                'virustotal':     0.15,
+                'ipqualityscore': 0.15,
+                'ml_detector':    0.10,
+                'content':        0.10,
+                'ssl':            0.05,
+            }
         
         total_weighted_score = 0.0
         score_breakdown = {}
-        
-        # Heuristic (25%)
-        if heu_res.success:
-            total_weighted_score += heu_res.score * weights['heuristic']
-            score_breakdown['heuristic'] = heu_res.score
-            
-        # Safe Browsing (20%)
-        if sb_res.success:
-            total_weighted_score += sb_res.score * weights['safe_browsing']
-            score_breakdown['safe_browsing'] = sb_res.score
-            
-        # VirusTotal (15%)
-        if vt_res.success:
-            total_weighted_score += vt_res.score * weights['virustotal']
-            score_breakdown['virustotal'] = vt_res.score
-            
-        # IPQualityScore (15%)
-        if ipq_res.success:
-            total_weighted_score += ipq_res.score * weights['ipqualityscore']
-            score_breakdown['ipqualityscore'] = ipq_res.score
-            
-        # ML Detector (10%)
-        if ml_res.success:
-            total_weighted_score += ml_res.score * weights['ml_detector']
-            score_breakdown['ml_detector'] = ml_res.score
-            
-        # Content Analysis (10%)
-        if cnt_res.success:
-            total_weighted_score += cnt_res.score * weights['content']
-            score_breakdown['content'] = cnt_res.score
-            
-        # SSL Check (5%)
-        if ssl_res.success:
-            total_weighted_score += ssl_res.score * weights['ssl']
-            score_breakdown['ssl'] = ssl_res.score
+
+        for detector_name, weight in weights.items():
+            # Map weight keys to result variables
+            result_map = {
+                'heuristic':      heu_res,
+                'safe_browsing':  sb_res,
+                'virustotal':     vt_res,
+                'ipqualityscore': ipq_res,
+                'visual':         visual_res,
+                'ml_detector':    ml_res,
+                'content':        cnt_res,
+                'ssl':            ssl_res,
+            }
+            res = result_map.get(detector_name)
+            if res and res.success:
+                total_weighted_score += res.score * weight
+                score_breakdown[detector_name] = res.score
             
         final_score = min(total_weighted_score, 100.0)
         

@@ -1,0 +1,154 @@
+{
+  "datasets": {
+    "A": {
+      "file": "phishing.csv",
+      "features": 30,
+      "feature_columns": [
+        "UsingIP",
+        "LongURL",
+        "ShortURL",
+        "Symbol@",
+        "Redirecting//",
+        "PrefixSuffix-",
+        "SubDomains",
+        "HTTPS",
+        "DomainRegLen",
+        "Favicon",
+        "NonStdPort",
+        "HTTPSDomainURL",
+        "RequestURL",
+        "AnchorURL",
+        "LinksInScriptTags",
+        "ServerFormHandler",
+        "InfoEmail",
+        "AbnormalURL",
+        "WebsiteForwarding",
+        "StatusBarCust",
+        "DisableRightClick",
+        "UsingPopupWindow",
+        "IframeRedirection",
+        "AgeofDomain",
+        "DNSRecording",
+        "WebsiteTraffic",
+        "PageRank",
+        "GoogleIndex",
+        "LinksPointingToPage",
+        "StatsReport"
+      ],
+      "label_map": {
+        "0": "legitimate",
+        "1": "phishing"
+      },
+      "model_results": {
+        "RF": {
+          "f1": 0.9786,
+          "auc": 0.9946
+        },
+        "XGB": {
+          "f1": 0.9758,
+          "auc": 0.9968
+        },
+        "DL": {
+          "f1": 0.969,
+          "auc": 0.9944
+        }
+      },
+      "ensemble_f1": 0.9742,
+      "ensemble_auc": 0.9968
+    },
+    "B": {
+      "file": "Phishing_Legitimate_full.csv",
+      "features": 48,
+      "feature_columns": [
+        "NumDots",
+        "SubdomainLevel",
+        "PathLevel",
+        "UrlLength",
+        "NumDash",
+        "NumDashInHostname",
+        "AtSymbol",
+        "TildeSymbol",
+        "NumUnderscore",
+        "NumPercent",
+        "NumQueryComponents",
+        "NumAmpersand",
+        "NumHash",
+        "NumNumericChars",
+        "NoHttps",
+        "RandomString",
+        "IpAddress",
+        "DomainInSubdomains",
+        "DomainInPaths",
+        "HttpsInHostname",
+        "HostnameLength",
+        "PathLength",
+        "QueryLength",
+        "DoubleSlashInPath",
+        "NumSensitiveWords",
+        "EmbeddedBrandName",
+        "PctExtHyperlinks",
+        "PctExtResourceUrls",
+        "ExtFavicon",
+        "InsecureForms",
+        "RelativeFormAction",
+        "ExtFormAction",
+        "AbnormalFormAction",
+        "PctNullSelfRedirectHyperlinks",
+        "FrequentDomainNameMismatch",
+        "FakeLinkInStatusBar",
+        "RightClickDisabled",
+        "PopUpWindow",
+        "SubmitInfoToEmail",
+        "IframeOrFrame",
+        "MissingTitle",
+        "ImagesOnlyInForm",
+        "SubdomainLevelRT",
+        "UrlLengthRT",
+        "PctExtResourceUrlsRT",
+        "AbnormalExtFormActionR",
+        "ExtMetaScriptLinkRT",
+        "PctExtNullSelfRedirectHyperlinksRT"
+      ],
+      "label_map": {
+        "0": "legitimate",
+        "1": "phishing"
+      },
+      "model_results": {
+        "RF": {
+          "f1": 0.984,
+          "auc": 0.9985
+        },
+        "XGB": {
+          "f1": 0.9887,
+          "auc": 0.9985
+        },
+        "DL": {
+          "f1": 0.9766,
+          "auc": 0.997
+        }
+      },
+      "ensemble_f1": 0.9886,
+      "ensemble_auc": 0.9987
+    }
+  },
+  "overall": {
+    "avg_f1": 0.9814,
+    "avg_auc": 0.9978
+  },
+  "model_files": {
+    "datasetA": {
+      "rf": "models/datasetA/rf_model.joblib",
+      "xgb": "models/datasetA/xgb_model.joblib",
+      "dl": "models/datasetA/dl_model.keras",
+      "scaler": "models/datasetA/scaler.joblib",
+      "columns": "models/datasetA/feature_columns.joblib"
+    },
+    "datasetB": {
+      "rf": "models/datasetB/rf_model.joblib",
+      "xgb": "models/datasetB/xgb_model.joblib",
+      "dl": "models/datasetB/dl_model.keras",
+      "scaler": "models/datasetB/scaler.joblib",
+      "columns": "models/datasetB/feature_columns.joblib"
+    }
+  }
+}

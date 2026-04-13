@@ -29,7 +29,6 @@ class VirusTotalDetector(BaseDetector):
             )
             
         try:
-            # Hash URL for analysis as per server.py logic
             url_hash = hashlib.sha256(url.encode()).hexdigest()
             
             headers = {

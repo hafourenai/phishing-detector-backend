@@ -45,8 +45,6 @@ class SafeBrowsingDetector(BaseDetector):
         }
         
         try:
-            # Safe Browsing lookup is synchronous in server.py, keeping it simple
-            # but using safe_detect (async) wrapper
             response = requests.post(endpoint, json=payload, timeout=self.timeout)
             data = response.json()
             

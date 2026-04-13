@@ -145,9 +145,6 @@ class FeatureExtractor:
         # 26. EmbeddedBrandName - Contains brand name (potential spoofing)
         features['EmbeddedBrandName'] = 1 if any(brand in url_lower for brand in FeatureExtractor.BRAND_NAMES) else 0
         
-        # === HTML-based features (require page content - using safe defaults for URL-only analysis) ===
-        # For production with actual HTML scraping, these would be extracted from page content
-        
         # 27. PctExtHyperlinks - % of external hyperlinks (default: 0 = safe)
         features['PctExtHyperlinks'] = 0.0
         

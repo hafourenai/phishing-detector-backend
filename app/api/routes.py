@@ -42,35 +42,38 @@ def health_check():
 def check_url():
     """
     Check URL for phishing.
-    
+
     Request body:
         {
             "url": "https://example.com",
             "force_refresh": false,
-            "include_details": true
+            "include_details": true,
+            "deep_scan": false
         }
+
+    Set deep_scan=true to enable visual analysis via headless browser
+    (slower but detects JS-rendered phishing, brand impersonation, etc.)
     """
     try:
         data = request.get_json()
-        
+
         if not data:
             return jsonify({'error': 'Request body is required'}), 400
-        
+
         url = data.get('url')
         force_refresh = data.get('force_refresh', False)
         include_details = data.get('include_details', True)
-        
+        deep_scan = data.get('deep_scan', False)
+
         if not url:
             return jsonify({'error': 'URL is required'}), 400
-        
-        # Analyze URL - handle async
-        # Flask is not async by default in old versions, but Blueprint.route can be in Flask 2.0+
-        # If running in older flask or without async support, we might need a wrapper
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         result = loop.run_until_complete(analyzer.analyze(
             url=url,
-            force_refresh=force_refresh
+            force_refresh=force_refresh,
+            deep_scan=deep_scan,
         ))
         loop.close()
         

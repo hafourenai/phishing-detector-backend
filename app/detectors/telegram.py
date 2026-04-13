@@ -36,14 +36,11 @@ class TelegramDetector(BaseDetector):
                 if success:
                     if info.get('is_bot'):
                         issues.append(f"Telegram: Bot resmi teridentifikasi (@{username})")
-                        # Official bots are generally safer, but could be a tool for phishing
-                        # We don't necessarily increase risk score just because it's a bot
                     else:
                         issues.append(f"Telegram: Tautan akun biasa ({info.get('status')})")
                 else:
                     issues.append(f"Telegram: Pemeriksaan akun gagal: {info.get('status')}")
-                    score += 20 # Suspicious if claim is a bot but not found
-        
+                    score += 20 
         return self._create_result(
             score=score,
             issues=issues,
