@@ -78,6 +78,15 @@ class SSLDetector(BaseDetector):
                 }
             )
             
+        except (socket.gaierror, OSError) as e:
+            logger.warning(f"SSL detection skipped for {hostname} — DNS/socket error: {str(e)}")
+            return self._create_result(
+                score=0.0,
+                success=False,
+                issues=["Tidak dapat terhubung ke host (DNS lookup gagal)."],
+                details={"error": str(e), "has_ssl": False}
+            )
+
         except Exception as e:
             logger.error(f"SSL detection failed for {hostname}: {str(e)}")
             return self._create_result(

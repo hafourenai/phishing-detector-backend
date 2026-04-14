@@ -129,11 +129,87 @@
       },
       "ensemble_f1": 0.9886,
       "ensemble_auc": 0.9987
+    },
+    "C": {
+      "file": "PhiUSIIL_Phishing_URL_Dataset.csv",
+      "features": 50,
+      "feature_columns": [
+        "URLLength",
+        "DomainLength",
+        "IsDomainIP",
+        "URLSimilarityIndex",
+        "CharContinuationRate",
+        "TLDLegitimateProb",
+        "URLCharProb",
+        "TLDLength",
+        "NoOfSubDomain",
+        "HasObfuscation",
+        "NoOfObfuscatedChar",
+        "ObfuscationRatio",
+        "NoOfLettersInURL",
+        "LetterRatioInURL",
+        "NoOfDegitsInURL",
+        "DegitRatioInURL",
+        "NoOfEqualsInURL",
+        "NoOfQMarkInURL",
+        "NoOfAmpersandInURL",
+        "NoOfOtherSpecialCharsInURL",
+        "SpacialCharRatioInURL",
+        "IsHTTPS",
+        "LineOfCode",
+        "LargestLineLength",
+        "HasTitle",
+        "DomainTitleMatchScore",
+        "URLTitleMatchScore",
+        "HasFavicon",
+        "Robots",
+        "IsResponsive",
+        "NoOfURLRedirect",
+        "NoOfSelfRedirect",
+        "HasDescription",
+        "NoOfPopup",
+        "NoOfiFrame",
+        "HasExternalFormSubmit",
+        "HasSocialNet",
+        "HasSubmitButton",
+        "HasHiddenFields",
+        "HasPasswordField",
+        "Bank",
+        "Pay",
+        "Crypto",
+        "HasCopyrightInfo",
+        "NoOfImage",
+        "NoOfCSS",
+        "NoOfJS",
+        "NoOfSelfRef",
+        "NoOfEmptyRef",
+        "NoOfExternalRef"
+      ],
+      "label_map": {
+        "0": "phishing",
+        "1": "legitimate"
+      },
+      "model_results": {
+        "RF": {
+          "f1": 1.0,
+          "auc": 1.0
+        },
+        "XGB": {
+          "f1": 1.0,
+          "auc": 1.0
+        },
+        "DL": {
+          "f1": 0.9999,
+          "auc": 1.0
+        }
+      },
+      "ensemble_f1": 1.0,
+      "ensemble_auc": 1.0
     }
   },
   "overall": {
-    "avg_f1": 0.9814,
-    "avg_auc": 0.9978
+    "avg_f1": 0.9876,
+    "avg_auc": 0.9985
   },
   "model_files": {
     "datasetA": {
@@ -149,6 +225,13 @@
       "dl": "models/datasetB/dl_model.keras",
       "scaler": "models/datasetB/scaler.joblib",
       "columns": "models/datasetB/feature_columns.joblib"
+    },
+    "datasetC": {
+      "rf": "models/datasetC/rf_model.joblib",
+      "xgb": "models/datasetC/xgb_model.joblib",
+      "dl": "models/datasetC/dl_model.keras",
+      "scaler": "models/datasetC/scaler.joblib",
+      "columns": "models/datasetC/feature_columns.joblib"
     }
   }
 }
