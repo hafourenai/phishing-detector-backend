@@ -15,6 +15,7 @@ class APIConfig:
     ipqualityscore: Optional[str] = field(default_factory=lambda: os.getenv("IPQUALITYSCORE_API_KEY"))
     rapidapi: Optional[str] = field(default_factory=lambda: os.getenv("RAPIDAPI_KEY"))
     telegram: Optional[str] = field(default_factory=lambda: os.getenv("TELEGRAM_BOT_TOKEN"))
+    whois: Optional[str] = field(default_factory=lambda: os.getenv("WHOIS"))
 
 
 @dataclass
