@@ -1,5 +1,9 @@
 """Main analysis orchestrator."""
 import time
+import requests
+import tldextract
+from datetime import datetime, timezone
+from bs4 import BeautifulSoup
 from typing import List, Dict, Any, Optional
 from urllib.parse import urlparse
 
@@ -125,23 +129,23 @@ class URLAnalyzer:
         # weights are used so the score is always calibrated to 100%.
         if deep_scan and visual_res.success:
             weights = {
-                'heuristic':      0.20,
-                'safe_browsing':  0.17,
-                'virustotal':     0.13,
-                'ipqualityscore': 0.12,
-                'visual':         0.15,   # ← new
-                'ml_detector':    0.10,
-                'content':        0.08,
+                'ml_detector':    0.25,
+                'heuristic':      0.17,
+                'safe_browsing':  0.14,
+                'virustotal':     0.10,
+                'ipqualityscore': 0.09,
+                'visual':         0.15,
+                'content':        0.05,
                 'ssl':            0.05,
             }
         else:
             weights = {
-                'heuristic':      0.25,
-                'safe_browsing':  0.20,
-                'virustotal':     0.15,
-                'ipqualityscore': 0.15,
-                'ml_detector':    0.10,
-                'content':        0.10,
+                'ml_detector':    0.25,
+                'heuristic':      0.22,
+                'safe_browsing':  0.17,
+                'virustotal':     0.13,
+                'ipqualityscore': 0.12,
+                'content':        0.06,
                 'ssl':            0.05,
             }
         
@@ -234,7 +238,53 @@ class URLAnalyzer:
                     execution_time=time.time() - start_time
                 )
             
-            features = self.extractor.extract(url)
+            # Fetch page content for HTML-based feature extraction
+            soup = None
+            response = None
+            try:
+                resp = requests.get(
+                    url, timeout=config.request_timeout,
+                    headers={
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    },
+                    allow_redirects=True
+                )
+                response = resp
+                if 'text/html' in resp.headers.get('Content-Type', ''):
+                    soup = BeautifulSoup(resp.content, 'html.parser')
+            except Exception:
+                logger.debug(f"Could not fetch page content for HTML features: {url[:60]}...")
+
+            # Attempt lightweight RDAP lookup for domain age
+            domain_age_days = None
+            try:
+                parsed = urlparse(url)
+                domain = parsed.netloc.split(':')[0]
+                extracted = tldextract.extract(domain)
+                reg_domain = f"{extracted.domain}.{extracted.suffix}" if extracted.domain and extracted.suffix else domain
+                rdap_resp = requests.get(
+                    f"https://rdap.org/domain/{reg_domain}",
+                    timeout=5
+                )
+                if rdap_resp.status_code == 200:
+                    rdap_data = rdap_resp.json()
+                    for event in rdap_data.get("events", []):
+                        if event.get("eventAction") == "registration":
+                            reg_date_str = event.get("eventDate", "")
+                            for fmt in ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
+                                try:
+                                    reg_date = datetime.strptime(reg_date_str[:19], fmt[:len(fmt)])
+                                    reg_date = reg_date.replace(tzinfo=timezone.utc)
+                                    domain_age_days = (datetime.now(timezone.utc) - reg_date).days
+                                    break
+                                except ValueError:
+                                    continue
+                            break
+            except Exception:
+                pass
+
+            features = self.extractor.extract(url, soup=soup, response=response, domain_age_days=domain_age_days)
             prediction = self.ml_model.predict(features)
             
             # Cache the prediction result

@@ -302,6 +302,13 @@ class ModelManager:
             self.scaler = self.scaler_B
             self.feature_columns = self.feature_columns_B
 
+            # F1-based weights for weighted ensemble
+            # Cap suspicious perfect scores (Dataset C F1=1.0 → 0.98)
+            self._weights_A = (0.9786, 0.9758, 0.9690)   # RF, XGB, DL
+            self._weights_B = (0.9840, 0.9887, 0.9766)
+            self._weights_C = (0.9800, 0.9800, 0.9799)   # capped from 1.0/0.9999
+            self._dataset_weights = (0.9742, 0.9886, 0.9800)  # A, B, C (C capped)
+
             # Final status
             self._model_loaded = all_loaded
 
@@ -317,8 +324,15 @@ class ModelManager:
             self._model_loaded = False
 
     # Helper: extract phishing probability from a single model
-    def _get_phishing_prob(self, model, scaled_df: pd.DataFrame) -> float:
+    def _get_phishing_prob(self, model, scaled_df: pd.DataFrame, phishing_index: int = 1) -> float:
         """Return the phishing class probability for *one* model.
+
+        Args:
+            model: The ML model (sklearn, XGBoost, or Keras).
+            scaled_df: Scaled feature DataFrame.
+            phishing_index: Index of the phishing class in the model's output.
+                            Dataset A & B use 1 (softmax [legit, phish]).
+                            Dataset C uses 0 (softmax [phish, legit]).
 
         Handles sklearn-style (predict_proba), XGBoost DMatrix, and
         Keras models (predict returning a single float or array).
@@ -331,13 +345,13 @@ class ModelManager:
                 # Binary output: single sigmoid neuron → probability of class 1
                 if len(pred) == 1:
                     return float(pred[0])
-                # Softmax output: [prob_legit, prob_phishing]
-                return float(pred[1]) if len(pred) >= 2 else float(pred[0])
+                # Softmax output: use phishing_index to select correct column
+                return float(pred[phishing_index]) if len(pred) >= 2 else float(pred[0])
 
             # Sklearn / XGBoost with predict_proba
             if hasattr(model, "predict_proba"):
                 proba = model.predict_proba(scaled_df.values)[0]
-                return float(proba[1])
+                return float(proba[phishing_index])
 
             # Fallback: hard prediction
             pred = model.predict(scaled_df.values)[0]
@@ -434,35 +448,44 @@ class ModelManager:
             raise ValueError("Model not ready - artifacts not fully loaded")
 
         try:
-            # Dataset A 
+            # Dataset A — label map: {0: legitimate, 1: phishing}, phishing_index=1
             features_A = self.align_features(features_dict, feature_columns=self.feature_columns_A)
             scaled_A   = self.scale_features(features_A, scaler=self.scaler_A)
 
-            prob_rf_A  = self._get_phishing_prob(self.rf_A,  scaled_A)
-            prob_xgb_A = self._get_phishing_prob(self.xgb_A, scaled_A)
-            prob_dl_A  = self._get_phishing_prob(self.dl_A,  scaled_A)
-            avg_A = (prob_rf_A + prob_xgb_A + prob_dl_A) / 3.0
+            prob_rf_A  = self._get_phishing_prob(self.rf_A,  scaled_A, phishing_index=1)
+            prob_xgb_A = self._get_phishing_prob(self.xgb_A, scaled_A, phishing_index=1)
+            prob_dl_A  = self._get_phishing_prob(self.dl_A,  scaled_A, phishing_index=1)
+            # Weighted average per-dataset using per-model F1 weights
+            w_rf_A, w_xgb_A, w_dl_A = self._weights_A
+            w_sum_A = w_rf_A + w_xgb_A + w_dl_A
+            avg_A = (prob_rf_A * w_rf_A + prob_xgb_A * w_xgb_A + prob_dl_A * w_dl_A) / w_sum_A if w_sum_A > 0 else (prob_rf_A + prob_xgb_A + prob_dl_A) / 3.0
 
-            # Dataset B
+            # Dataset B — label map: {0: legitimate, 1: phishing}, phishing_index=1
             features_B = self.align_features(features_dict, feature_columns=self.feature_columns_B)
             scaled_B   = self.scale_features(features_B, scaler=self.scaler_B)
 
-            prob_rf_B  = self._get_phishing_prob(self.rf_B,  scaled_B)
-            prob_xgb_B = self._get_phishing_prob(self.xgb_B, scaled_B)
-            prob_dl_B  = self._get_phishing_prob(self.dl_B,  scaled_B)
-            avg_B = (prob_rf_B + prob_xgb_B + prob_dl_B) / 3.0
+            prob_rf_B  = self._get_phishing_prob(self.rf_B,  scaled_B, phishing_index=1)
+            prob_xgb_B = self._get_phishing_prob(self.xgb_B, scaled_B, phishing_index=1)
+            prob_dl_B  = self._get_phishing_prob(self.dl_B,  scaled_B, phishing_index=1)
+            w_rf_B, w_xgb_B, w_dl_B = self._weights_B
+            w_sum_B = w_rf_B + w_xgb_B + w_dl_B
+            avg_B = (prob_rf_B * w_rf_B + prob_xgb_B * w_xgb_B + prob_dl_B * w_dl_B) / w_sum_B if w_sum_B > 0 else (prob_rf_B + prob_xgb_B + prob_dl_B) / 3.0
 
-            # Dataset C
+            # Dataset C — label map: {0: phishing, 1: legitimate}, phishing_index=0
             features_C = self.align_features(features_dict, feature_columns=self.feature_columns_C)
             scaled_C   = self.scale_features(features_C, scaler=self.scaler_C)
 
-            prob_rf_C  = self._get_phishing_prob(self.rf_C,  scaled_C)
-            prob_xgb_C = self._get_phishing_prob(self.xgb_C, scaled_C)
-            prob_dl_C  = self._get_phishing_prob(self.dl_C,  scaled_C)
-            avg_C = (prob_rf_C + prob_xgb_C + prob_dl_C) / 3.0
+            prob_rf_C  = self._get_phishing_prob(self.rf_C,  scaled_C, phishing_index=0)
+            prob_xgb_C = self._get_phishing_prob(self.xgb_C, scaled_C, phishing_index=0)
+            prob_dl_C  = self._get_phishing_prob(self.dl_C,  scaled_C, phishing_index=0)
+            w_rf_C, w_xgb_C, w_dl_C = self._weights_C
+            w_sum_C = w_rf_C + w_xgb_C + w_dl_C
+            avg_C = (prob_rf_C * w_rf_C + prob_xgb_C * w_xgb_C + prob_dl_C * w_dl_C) / w_sum_C if w_sum_C > 0 else (prob_rf_C + prob_xgb_C + prob_dl_C) / 3.0
 
-            # Final ensemble (equal weight A + B + C) 
-            final_prob  = (avg_A + avg_B + avg_C) / 3.0
+            # Final ensemble: weighted by dataset-level F1 scores
+            ds_w_A, ds_w_B, ds_w_C = self._dataset_weights
+            ds_w_sum = ds_w_A + ds_w_B + ds_w_C
+            final_prob = (avg_A * ds_w_A + avg_B * ds_w_B + avg_C * ds_w_C) / ds_w_sum if ds_w_sum > 0 else (avg_A + avg_B + avg_C) / 3.0
             is_phishing = final_prob >= 0.5
             confidence  = final_prob if is_phishing else (1.0 - final_prob)
 
